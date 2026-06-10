@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "977811738364",
+    "project_id": "quinckapp",
+    "storage_bucket": "quinckapp.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:977811738364:android:2ff2cca5335a683b405179",
+        "android_client_info": {
+          "package_name": "com.gestquick.quincaillerie_stock"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBAzR-255TbQ5FfnftgtkmfsVpJr8BYzaM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

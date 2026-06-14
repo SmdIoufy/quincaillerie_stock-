@@ -31,4 +31,22 @@ class UserModel {
       isBlocked: json['isBlocked'] ?? false,
     );
   }
+
+  UserModel copyWith({
+    String? role,
+    String? displayName,
+    bool? isActive,
+    bool? isBlocked,
+  }) {
+    return UserModel(
+      id: id,
+      firebaseUid: firebaseUid,
+      email: email,
+      displayName: displayName ?? this.displayName,
+      phoneNumber: phoneNumber,
+      role: role ?? this.role,
+      isActive: isActive ?? this.isActive,
+      isBlocked: isBlocked ?? this.isBlocked,
+    );
+  }
 }

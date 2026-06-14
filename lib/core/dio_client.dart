@@ -5,22 +5,32 @@ class DioClient {
   static final Dio dio = _createDio();
 
   static Dio _createDio() {
-    final d = Dio(BaseOptions(
-      baseUrl: 'http://localhost:3000/api/v1',
-      connectTimeout: const Duration(seconds: 10),
-      receiveTimeout: const Duration(seconds: 10),
-    ));
+    final d = Dio(
+      BaseOptions(
+        baseUrl: 'http://localhost:3000/api/v1',
+        connectTimeout: const Duration(seconds: 10),
+        receiveTimeout: const Duration(seconds: 10),
+      ),
+    );
 
-    d.interceptors.add(InterceptorsWrapper(
-      onRequest: (options, handler) async {
-        final user = FirebaseAuth.instance.currentUser;
-        if (user != null) {
-          final token = await user.getIdToken();
-          options.headers['Authorization'] = 'Bearer $token';
-        }
-        handler.next(options);
-      },
-    ));
+    d.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) async {
+          final user = FirebaseAuth.instance.currentUser;
+
+          if (user != null) {
+            /// IMPORTANT :
+            /// forceRefresh = true permet de récupérer un token à jour
+            /// avec les custom claims (role ADMIN / GERANT)
+            final token = await user.getIdToken(true);
+
+            options.headers['Authorization'] = 'Bearer $token';
+          }
+
+          handler.next(options);
+        },
+      ),
+    );
 
     return d;
   }

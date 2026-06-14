@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 
@@ -18,7 +19,7 @@ class DashboardScreen extends StatelessWidget {
             onPressed: () async {
               await context.read<AuthProvider>().logout();
               if (!context.mounted) return;
-              Navigator.pushReplacementNamed(context, '/login');
+              context.go('/login');
             },
           ),
         ],

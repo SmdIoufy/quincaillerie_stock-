@@ -8,7 +8,7 @@ import '../../features/dashboard/screens/dashboard_gerant_screen.dart';
 import '../../features/stats/screens/stats_page.dart';
 import '../../features/stock/screens/stock_page.dart';
 import '../../features/users/screens/users_page.dart';
-import '../../features/ventes/screens/ventes_page.dart';
+import '../../features/vente/screens/ventes_page.dart';
 import '../../providers/auth_provider.dart';
 import '../../screens/forgot_password_screen.dart';
 import '../../screens/login_screen.dart';

@@ -25,6 +25,9 @@ dependencies:
 
   # Stockage local (token, prefs)
   shared_preferences: ^2.2.3
+  pdf: 3.11.1
+  printing: 5.13.1
+  path_provider: 2.1.4
 
 dev_dependencies:
   flutter_test:

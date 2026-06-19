@@ -4,6 +4,7 @@ import '../../../core/constants/app-colors.dart';
 import '../models/vente_models.dart';
 import '../services/vente_provider.dart';
 import '../widgets/vente_widgets.dart';
+import 'vente_recu_screen.dart';
 
 class VenteDetailScreen extends StatefulWidget {
   final String venteId;
@@ -32,8 +33,29 @@ class _VenteDetailScreenState extends State<VenteDetailScreen> {
         title: const Text('Détail de la vente'),
         centerTitle: false,
         elevation: 0,
+        actions: [
+          // Bouton reçu — visible uniquement si la vente est chargée
+          if (prov.selectedVente != null)
+            IconButton(
+              icon: const Icon(Icons.receipt_outlined),
+              tooltip: 'Voir le reçu',
+              onPressed: () => _ouvrirRecu(context, prov),
+            ),
+        ],
       ),
       body: _buildBody(context, prov),
+    );
+  }
+
+  void _ouvrirRecu(BuildContext context, VenteProvider prov) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ChangeNotifierProvider.value(
+          value: prov,
+          child: VenteRecuScreen(venteId: widget.venteId),
+        ),
+      ),
     );
   }
 
@@ -67,7 +89,7 @@ class _VenteDetailScreenState extends State<VenteDetailScreen> {
           const SizedBox(height: 20),
           _TotalCard(vente: vente),
           const SizedBox(height: 24),
-          _ActionsRow(vente: vente),
+          _ActionsRow(vente: vente, venteId: widget.venteId),
           if (prov.statutActionError != null) ...[
             const SizedBox(height: 12),
             Text(
@@ -81,6 +103,8 @@ class _VenteDetailScreenState extends State<VenteDetailScreen> {
     );
   }
 }
+
+// ── En-tête ───────────────────────────────────────────────────────────────────
 
 class _Header extends StatelessWidget {
   final Vente vente;
@@ -107,29 +131,27 @@ class _Header extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 8),
-            Row(
-              children: [
-                const Icon(Icons.person_outline, size: 16, color: Colors.grey),
-                const SizedBox(width: 6),
-                Text(vente.clientNom ?? 'Client inconnu'),
-              ],
-            ),
+            Row(children: [
+              const Icon(Icons.person_outline, size: 16, color: Colors.grey),
+              const SizedBox(width: 6),
+              Text(vente.clientNom ?? 'Client inconnu'),
+            ]),
             const SizedBox(height: 4),
-            Row(
-              children: [
-                const Icon(Icons.event_outlined, size: 16, color: Colors.grey),
-                const SizedBox(width: 6),
-                Text('${vente.date.day.toString().padLeft(2, '0')}/'
-                    '${vente.date.month.toString().padLeft(2, '0')}/'
-                    '${vente.date.year}'),
-              ],
-            ),
+            Row(children: [
+              const Icon(Icons.event_outlined, size: 16, color: Colors.grey),
+              const SizedBox(width: 6),
+              Text('${vente.date.day.toString().padLeft(2, '0')}/'
+                  '${vente.date.month.toString().padLeft(2, '0')}/'
+                  '${vente.date.year}'),
+            ]),
           ],
         ),
       ),
     );
   }
 }
+
+// ── Ligne article ─────────────────────────────────────────────────────────────
 
 class _LigneCard extends StatelessWidget {
   final LigneVente ligne;
@@ -159,6 +181,8 @@ class _LigneCard extends StatelessWidget {
   }
 }
 
+// ── Total ─────────────────────────────────────────────────────────────────────
+
 class _TotalCard extends StatelessWidget {
   final Vente vente;
   const _TotalCard({required this.vente});
@@ -168,7 +192,7 @@ class _TotalCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.primary.withOpacity(0.08),
+        color: AppColors.primary.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -190,20 +214,18 @@ class _TotalCard extends StatelessWidget {
   }
 }
 
-/// Actions disponibles selon le statut. ADMIN et GERANT voient exactement
-/// les mêmes boutons — aucune restriction de rôle sur ces actions
-/// (cf. requireRole('admin', 'gerant') appliqué globalement côté backend).
+// ── Actions valider / annuler ─────────────────────────────────────────────────
+
 class _ActionsRow extends StatelessWidget {
   final Vente vente;
-  const _ActionsRow({required this.vente});
+  final String venteId;
+  const _ActionsRow({required this.vente, required this.venteId});
 
   @override
   Widget build(BuildContext context) {
     final prov = context.watch<VenteProvider>();
 
-    if (vente.estTerminale) {
-      return const SizedBox.shrink();
-    }
+    if (vente.estTerminale) return const SizedBox.shrink();
 
     return Row(
       children: [
@@ -221,8 +243,7 @@ class _ActionsRow extends StatelessWidget {
                       height: 16,
                       width: 16,
                       child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white),
-                    )
+                          strokeWidth: 2, color: Colors.white))
                   : const Icon(Icons.check, color: Colors.white),
               label:
                   const Text('Valider', style: TextStyle(color: Colors.white)),
@@ -231,7 +252,20 @@ class _ActionsRow extends StatelessWidget {
                   : () async {
                       final ok = await showValiderConfirmDialog(
                           context, vente.reference);
-                      if (ok) await prov.validerVente(vente.id);
+                      if (!ok || !context.mounted) return;
+                      final success = await prov.validerVente(vente.id);
+                      // Redirection automatique vers le reçu après validation
+                      if (success && context.mounted) {
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => ChangeNotifierProvider.value(
+                              value: prov,
+                              child: VenteRecuScreen(venteId: venteId),
+                            ),
+                          ),
+                        );
+                      }
                     },
             ),
           ),
@@ -251,15 +285,10 @@ class _ActionsRow extends StatelessWidget {
               onPressed: prov.updatingStatut
                   ? null
                   : () async {
-                      // Le stock n'est restitué que si la vente était VALIDEE
-                      // (rien n'a été décrémenté pour une vente encore BROUILLON).
                       final stockSeraRestitue =
                           vente.statut == StatutVente.validee;
                       final ok = await showAnnulerConfirmDialog(
-                        context,
-                        vente.reference,
-                        stockSeraRestitue,
-                      );
+                          context, vente.reference, stockSeraRestitue);
                       if (ok) await prov.annulerVente(vente.id);
                     },
             ),

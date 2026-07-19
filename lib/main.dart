@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'firebase_options.dart';
 import 'providers/auth_provider.dart';
 import 'providers/user_management_provider.dart';
+import 'providers/audit_provider.dart';
 import 'core/constants/app-colors.dart';
 import 'core/router/app_router.dart';
 // Imports à ajouter
@@ -24,6 +25,7 @@ void main() async {
           create: (_) => InventaireProvider(),
         ),
         ChangeNotifierProvider(create: (_) => UserManagementProvider()),
+        ChangeNotifierProvider(create: (_) => AuditProvider()),
       ],
       child: const MyApp(),
     ),

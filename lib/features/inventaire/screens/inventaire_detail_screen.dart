@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:printing/printing.dart';
+import '../pdf/inventaire_pdf.dart';
 import '../services/inventaire_provider.dart';
 import '../widgets/ligne_inventaire_tile.dart';
 
@@ -75,11 +77,24 @@ class _InventaireDetailScreenState extends State<InventaireDetailScreen> {
 
     final inv = provider.selected!;
     final isEnCours = inv.statut == 'EN_COURS';
+    final ecartValeur = inv.valeurStockPhysique - inv.valeurStockTheorique;
+    final agregat = _aggregerEcarts(inv.lignes);
 
     return Scaffold(
       appBar: AppBar(
         title: Text(inv.description ?? 'Inventaire'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.picture_as_pdf_outlined),
+            tooltip: 'Exporter en PDF',
+            onPressed: () async {
+              final bytes = await genererInventairePdf(inv);
+              await Printing.sharePdf(
+                bytes: bytes,
+                filename: 'inventaire_${inv.id.substring(0, 8)}.pdf',
+              );
+            },
+          ),
           if (isEnCours) ...[
             TextButton.icon(
               onPressed: () => _changeStatut('ANNULE'),
@@ -98,6 +113,60 @@ class _InventaireDetailScreenState extends State<InventaireDetailScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          // (bandeau perte/excédent global déjà présent)
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Détail des écarts',
+                      style: Theme.of(context).textTheme.titleSmall),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                          'Excédents (${agregat.nbGains} article${agregat.nbGains > 1 ? 's' : ''})',
+                          style: const TextStyle(color: Colors.grey)),
+                      Text(
+                        '+${agregat.totalGains.toStringAsFixed(0)} FCFA',
+                        style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            color: Colors.orange.shade700),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                          'Manquants (${agregat.nbPertes} article${agregat.nbPertes > 1 ? 's' : ''})',
+                          style: const TextStyle(color: Colors.grey)),
+                      Text(
+                        '${agregat.totalPertes.toStringAsFixed(0)} FCFA',
+                        style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            color: Colors.red.shade700),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('Conformes', style: TextStyle(color: Colors.grey)),
+                      Text(
+                          '${agregat.nbConformes} article${agregat.nbConformes > 1 ? 's' : ''}',
+                          style: const TextStyle(fontWeight: FontWeight.w600)),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
           // ── Résumé ────────────────────────────────────────────
           Card(
             child: Padding(
@@ -134,6 +203,52 @@ class _InventaireDetailScreenState extends State<InventaireDetailScreen> {
       ),
     );
   }
+}
+
+// Ajout utilitaire (hors classe _InventaireDetailScreenState)
+class _EcartsAgreges {
+  final double totalGains;
+  final double totalPertes;
+  final int nbGains;
+  final int nbPertes;
+  final int nbConformes;
+
+  _EcartsAgreges({
+    required this.totalGains,
+    required this.totalPertes,
+    required this.nbGains,
+    required this.nbPertes,
+    required this.nbConformes,
+  });
+}
+
+_EcartsAgreges _aggregerEcarts(List<dynamic> lignes) {
+  double gains = 0;
+  double pertes = 0;
+  int nbGains = 0;
+  int nbPertes = 0;
+  int nbConformes = 0;
+
+  for (final ligne in lignes) {
+    final valeurEcart = ligne.ecart * ligne.prixAchatSnapshot;
+    if (ligne.ecart > 0) {
+      gains += valeurEcart;
+      nbGains++;
+    } else if (ligne.ecart < 0) {
+      pertes += valeurEcart; // déjà négatif
+      nbPertes++;
+    } else {
+      nbConformes++;
+    }
+  }
+
+  return _EcartsAgreges(
+    totalGains: gains,
+    totalPertes: pertes,
+    nbGains: nbGains,
+    nbPertes: nbPertes,
+    nbConformes: nbConformes,
+  );
 }
 
 class _Row extends StatelessWidget {

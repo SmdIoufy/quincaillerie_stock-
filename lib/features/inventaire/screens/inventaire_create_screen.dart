@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/inventaire_provider.dart';
+import 'inventaire_variante_picker_sheet.dart';
 
-/// Chaque ligne saisie par l'utilisateur
+/// Chaque ligne comptée par l'utilisateur (sélectionnée via le picker)
 class _LigneForm {
-  String varId;
-  int quantitePhysique;
-  String? observation;
+  final String varId;
+  final String label;
+  final int quantitePhysique;
+  final String? observation;
 
   _LigneForm({
     required this.varId,
+    required this.label,
     required this.quantitePhysique,
     this.observation,
   });
@@ -34,40 +37,31 @@ class _InventaireCreateScreenState extends State<InventaireCreateScreen> {
   final List<_LigneForm> _lignes = [];
   bool _isSubmitting = false;
 
-  // Contrôleurs pour l'ajout d'une ligne
-  final _varIdCtrl = TextEditingController();
-  final _qteCtrl = TextEditingController();
-  final _obsCtrl = TextEditingController();
-
   @override
   void dispose() {
     _descCtrl.dispose();
-    _varIdCtrl.dispose();
-    _qteCtrl.dispose();
-    _obsCtrl.dispose();
     super.dispose();
   }
 
-  void _addLigne() {
-    final varId = _varIdCtrl.text.trim();
-    final qte = int.tryParse(_qteCtrl.text.trim()) ?? -1;
-
-    if (varId.isEmpty || qte < 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('ID variante et quantité requis')),
-      );
-      return;
-    }
+  Future<void> _openPicker() async {
+    final result = await InventaireVariantePickerSheet.show(context);
+    if (result == null) return;
 
     setState(() {
-      _lignes.add(_LigneForm(
-        varId: varId,
-        quantitePhysique: qte,
-        observation: _obsCtrl.text.trim().isEmpty ? null : _obsCtrl.text.trim(),
-      ));
-      _varIdCtrl.clear();
-      _qteCtrl.clear();
-      _obsCtrl.clear();
+      final index = _lignes.indexWhere((l) => l.varId == result.varId);
+      final nouvelleLigne = _LigneForm(
+        varId: result.varId,
+        label: result.label,
+        quantitePhysique: result.quantitePhysique,
+        observation: result.observation,
+      );
+
+      if (index != -1) {
+        // Variante déjà comptée : on remplace la ligne existante
+        _lignes[index] = nouvelleLigne;
+      } else {
+        _lignes.add(nouvelleLigne);
+      }
     });
   }
 
@@ -77,7 +71,7 @@ class _InventaireCreateScreenState extends State<InventaireCreateScreen> {
     if (_lignes.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content: Text('Ajoutez au moins une ligne'),
+            content: Text('Ajoutez au moins un article compté'),
             backgroundColor: Colors.orange),
       );
       return;
@@ -123,7 +117,6 @@ class _InventaireCreateScreenState extends State<InventaireCreateScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // ── Description ──────────────────────────────────────
           TextField(
             controller: _descCtrl,
             decoration: const InputDecoration(
@@ -132,68 +125,42 @@ class _InventaireCreateScreenState extends State<InventaireCreateScreen> {
             ),
           ),
           const SizedBox(height: 24),
-
-          // ── Ajouter une ligne ─────────────────────────────────
-          Text('Lignes de comptage',
+          Text('Articles comptés (${_lignes.length})',
               style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 12),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                children: [
-                  TextField(
-                    controller: _varIdCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'ID Variante (UUID)',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: _qteCtrl,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: 'Quantité comptée',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: _obsCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'Observation (optionnel)',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: _addLigne,
-                      icon: const Icon(Icons.add),
-                      label: const Text('Ajouter la ligne'),
-                    ),
-                  ),
-                ],
-              ),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: _openPicker,
+              icon: const Icon(Icons.add),
+              label: const Text('Ajouter un article'),
             ),
           ),
           const SizedBox(height: 16),
-
-          // ── Liste des lignes saisies ──────────────────────────
-          ..._lignes.asMap().entries.map((e) => ListTile(
-                leading: CircleAvatar(child: Text('${e.key + 1}')),
-                title: Text(e.value.varId,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 12)),
-                subtitle: Text('Qté : ${e.value.quantitePhysique}'
-                    '${e.value.observation != null ? ' · ${e.value.observation}' : ''}'),
-                trailing: IconButton(
-                  icon: const Icon(Icons.delete, color: Colors.red),
-                  onPressed: () => _removeLigne(e.key),
+          if (_lignes.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 24),
+              child: Center(
+                child: Text(
+                  'Aucun article compté pour l\'instant',
+                  style: TextStyle(color: Colors.grey.shade500),
                 ),
-              )),
+              ),
+            )
+          else
+            ..._lignes.asMap().entries.map((e) => Card(
+                  child: ListTile(
+                    leading: CircleAvatar(child: Text('${e.key + 1}')),
+                    title: Text(e.value.label,
+                        style: const TextStyle(fontWeight: FontWeight.w600)),
+                    subtitle: Text('Qté comptée : ${e.value.quantitePhysique}'
+                        '${e.value.observation != null ? ' · ${e.value.observation}' : ''}'),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.delete, color: Colors.red),
+                      onPressed: () => _removeLigne(e.key),
+                    ),
+                  ),
+                )),
         ],
       ),
     );

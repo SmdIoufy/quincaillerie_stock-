@@ -13,6 +13,8 @@ import '../../providers/auth_provider.dart';
 import '../../screens/forgot_password_screen.dart';
 import '../../screens/login_screen.dart';
 import '../../screens/splash_screen.dart';
+// Ajouter cet import en haut
+import '../../features/inventaire/screens/inventaire_list_screen.dart';
 
 class AppRouter {
   AppRouter(this.auth);
@@ -50,6 +52,11 @@ class AppRouter {
         path: '/dashboard-gerant',
         builder: (context, state) => const DashboardGerantScreen(),
       ),
+      // Ajouter la route pour InventaireListScreen
+      // Ajouter cette route avec les autres GoRoute
+      GoRoute(
+          path: '/inventaire',
+          builder: (_, __) => const InventaireListScreen()),
       GoRoute(path: '/ventes', builder: (_, __) => const VentesPage()),
       GoRoute(path: '/stock', builder: (_, __) => const StockPage()),
       GoRoute(path: '/stats', builder: (_, __) => const StatsPage()),

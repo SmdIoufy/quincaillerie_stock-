@@ -4,15 +4,27 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'firebase_options.dart';
 import 'providers/auth_provider.dart';
+import 'providers/user_management_provider.dart';
 import 'core/constants/app-colors.dart';
 import 'core/router/app_router.dart';
+// Imports à ajouter
+
+import 'features/inventaire/services/inventaire_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   runApp(
-    ChangeNotifierProvider(
-      create: (_) => AuthProvider(),
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(
+          create: (_) => AuthProvider(),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => InventaireProvider(),
+        ),
+        ChangeNotifierProvider(create: (_) => UserManagementProvider()),
+      ],
       child: const MyApp(),
     ),
   );

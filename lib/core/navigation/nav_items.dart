@@ -71,7 +71,14 @@ class NavItems {
     route: '/audit',
   );
 
-  static List<NavItem> bottomNav = [accueil, vente, stock, stats, plus];
+  static const inventaire = NavItem(
+    label: 'Inventaire',
+    icon: Icons.checklist_outlined,
+    activeIcon: Icons.checklist_rounded,
+    route: '/inventaire',
+  );
+
+  static List<NavItem> bottomNav = [accueil, vente, stock, stats, inventaire];
 
   static List<NavItem> drawerItems(bool isAdmin) {
     final common = [vente, stock, stats, catalogue];

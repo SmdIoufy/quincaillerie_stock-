@@ -6,14 +6,36 @@ import '../../../core/constants/app-colors.dart';
 import '../../../core/widgets/app_drawer.dart';
 import '../../../core/widgets/app_bottom_nav.dart';
 import '../../../providers/auth_provider.dart';
+import '../../../providers/dashboard_provider.dart';
 
-class DashboardAdminScreen extends StatelessWidget {
+class DashboardAdminScreen extends StatefulWidget {
   const DashboardAdminScreen({super.key});
+
+  @override
+  State<DashboardAdminScreen> createState() => _DashboardAdminScreenState();
+}
+
+class _DashboardAdminScreenState extends State<DashboardAdminScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<DashboardProvider>().fetchAll();
+    });
+  }
+
+  String _formatMontant(double value) {
+    return value
+        .toStringAsFixed(0)
+        .replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m[1]} ');
+  }
 
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
     final name = auth.user?.displayName ?? 'Admin';
+    final dashboard = context.watch<DashboardProvider>();
+    final summary = dashboard.summary;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -28,78 +50,93 @@ class DashboardAdminScreen extends StatelessWidget {
         },
       ),
       bottomNavigationBar: const AppBottomNav(currentIndex: 0, isAdmin: true),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          // KPI row 1
-          Row(
-            children: [
-              Expanded(
-                child: _KpiCard(
-                  label: "Ventes aujourd'hui",
-                  value: '125 000',
-                  unit: 'FCFA',
-                  trend: '+15%',
-                  trendUp: true,
-                  iconColor: AppColors.primary,
-                  icon: Icons.point_of_sale_outlined,
+      body: dashboard.isLoading && summary == null
+          ? const Center(child: CircularProgressIndicator())
+          : dashboard.errorMessage != null && summary == null
+              ? Center(child: Text('Erreur : ${dashboard.errorMessage}'))
+              : RefreshIndicator(
+                  onRefresh: () => context.read<DashboardProvider>().fetchAll(),
+                  child: ListView(
+                    padding: const EdgeInsets.all(16),
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _KpiCard(
+                              label: "Ventes aujourd'hui",
+                              value: summary != null
+                                  ? _formatMontant(
+                                      summary.totalVentesAujourdhui)
+                                  : '—',
+                              unit: 'FCFA',
+                              iconColor: AppColors.primary,
+                              icon: Icons.point_of_sale_outlined,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _KpiCard(
+                              label: 'Ventes ce mois',
+                              value: summary != null
+                                  ? _formatMontant(summary.totalVentesMois)
+                                  : '—',
+                              unit: 'FCFA',
+                              iconColor: AppColors.accent,
+                              icon: Icons.trending_up_rounded,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _KpiCard(
+                              label: 'Produits en stock',
+                              value: summary != null
+                                  ? '${summary.totalVariantes}'
+                                  : '—',
+                              unit: 'articles',
+                              iconColor: AppColors.success,
+                              icon: Icons.inventory_2_outlined,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _KpiCard(
+                              label: 'Ruptures',
+                              value: summary != null
+                                  ? '${summary.stockEnAlerte}'
+                                  : '—',
+                              unit: 'produits',
+                              iconColor: AppColors.error,
+                              icon: Icons.warning_amber_rounded,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      const _SectionTitle(title: 'Produits les plus vendus'),
+                      const SizedBox(height: 10),
+                      if (dashboard.topVariantes.isEmpty)
+                        const Text('Aucune donnée',
+                            style: TextStyle(color: AppColors.textSecondary))
+                      else
+                        ...dashboard.topVariantes.asMap().entries.map(
+                              (e) => _TopProductItem(
+                                rank: e.key + 1,
+                                name:
+                                    '${e.value.familleNom} ${e.value.dimension}',
+                                qty: '${e.value.totalQuantiteVendue} unités',
+                              ),
+                            ),
+                      const SizedBox(height: 20),
+                      const _SectionTitle(title: 'Administration'),
+                      const SizedBox(height: 10),
+                      _AdminMenuGrid(),
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _KpiCard(
-                  label: 'Ventes ce mois',
-                  value: '2 850 000',
-                  unit: 'FCFA',
-                  trend: '+8%',
-                  trendUp: true,
-                  iconColor: AppColors.accent,
-                  icon: Icons.trending_up_rounded,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _KpiCard(
-                  label: 'Produits en stock',
-                  value: '320',
-                  unit: 'articles',
-                  iconColor: AppColors.success,
-                  icon: Icons.inventory_2_outlined,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _KpiCard(
-                  label: 'Ruptures',
-                  value: '12',
-                  unit: 'produits',
-                  iconColor: AppColors.error,
-                  icon: Icons.warning_amber_rounded,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-
-          // Top produits vendus
-          const _SectionTitle(title: 'Produits les plus vendus'),
-          const SizedBox(height: 10),
-          _TopProductItem(rank: 1, name: 'Clou 5cm', qty: '520 unités'),
-          _TopProductItem(rank: 2, name: 'Ciment 50kg', qty: '120 unités'),
-          _TopProductItem(rank: 3, name: 'Peinture 20L', qty: '80 unités'),
-          _TopProductItem(rank: 4, name: 'Marteau', qty: '60 unités'),
-          const SizedBox(height: 20),
-
-          // Menu admin rapide
-          const _SectionTitle(title: 'Administration'),
-          const SizedBox(height: 10),
-          _AdminMenuGrid(),
-        ],
-      ),
     );
   }
 
@@ -143,14 +180,10 @@ class DashboardAdminScreen extends StatelessWidget {
   }
 }
 
-// ─── KPI Card ────────────────────────────────────────────────────────────────
-
 class _KpiCard extends StatelessWidget {
   final String label;
   final String value;
   final String unit;
-  final String? trend;
-  final bool trendUp;
   final Color iconColor;
   final IconData icon;
 
@@ -160,8 +193,6 @@ class _KpiCard extends StatelessWidget {
     required this.unit,
     required this.iconColor,
     required this.icon,
-    this.trend,
-    this.trendUp = true,
   });
 
   @override
@@ -202,31 +233,14 @@ class _KpiCard extends StatelessWidget {
               color: AppColors.textPrimary,
             ),
           ),
-          Row(
-            children: [
-              Text(unit,
-                  style: const TextStyle(
-                      fontSize: 11, color: AppColors.textSecondary)),
-              if (trend != null) ...[
-                const SizedBox(width: 6),
-                Text(
-                  trend!,
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: trendUp ? AppColors.success : AppColors.error,
-                  ),
-                ),
-              ],
-            ],
-          ),
+          Text(unit,
+              style: const TextStyle(
+                  fontSize: 11, color: AppColors.textSecondary)),
         ],
       ),
     );
   }
 }
-
-// ─── Top produit ─────────────────────────────────────────────────────────────
 
 class _TopProductItem extends StatelessWidget {
   final int rank;
@@ -282,8 +296,6 @@ class _TopProductItem extends StatelessWidget {
     );
   }
 }
-
-// ─── Admin menu grille ────────────────────────────────────────────────────────
 
 class _AdminMenuGrid extends StatelessWidget {
   @override

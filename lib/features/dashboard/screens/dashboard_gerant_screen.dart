@@ -6,14 +6,36 @@ import '../../../core/constants/app-colors.dart';
 import '../../../core/widgets/app_drawer.dart';
 import '../../../core/widgets/app_bottom_nav.dart';
 import '../../../providers/auth_provider.dart';
+import '../../../providers/dashboard_provider.dart';
 
-class DashboardGerantScreen extends StatelessWidget {
+class DashboardGerantScreen extends StatefulWidget {
   const DashboardGerantScreen({super.key});
+
+  @override
+  State<DashboardGerantScreen> createState() => _DashboardGerantScreenState();
+}
+
+class _DashboardGerantScreenState extends State<DashboardGerantScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<DashboardProvider>().fetchAll();
+    });
+  }
+
+  String _formatMontant(double value) {
+    return value
+        .toStringAsFixed(0)
+        .replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m[1]} ');
+  }
 
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
     final name = auth.user?.displayName ?? 'Gérant';
+    final dashboard = context.watch<DashboardProvider>();
+    final summary = dashboard.summary;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -29,21 +51,23 @@ class DashboardGerantScreen extends StatelessWidget {
       ),
       body: RefreshIndicator(
         color: AppColors.primary,
-        onRefresh: () async {},
+        onRefresh: () => context.read<DashboardProvider>().fetchAll(),
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            // Card ventes du jour
-            _SalesCard(),
+            _SalesCard(
+              montant: summary != null
+                  ? '${_formatMontant(summary.totalVentesAujourdhui)} FCFA'
+                  : '—',
+              nombreVentes: summary?.nombreVentesAujourdhui,
+            ),
             const SizedBox(height: 12),
-
-            // Stats stock & ruptures
             Row(
               children: [
                 Expanded(
                   child: _StatMiniCard(
                     label: 'Produits en stock',
-                    value: '320',
+                    value: summary != null ? '${summary.totalVariantes}' : '—',
                     icon: Icons.inventory_2_outlined,
                     iconColor: AppColors.primary,
                   ),
@@ -52,7 +76,7 @@ class DashboardGerantScreen extends StatelessWidget {
                 Expanded(
                   child: _StatMiniCard(
                     label: 'Ruptures',
-                    value: '12',
+                    value: summary != null ? '${summary.stockEnAlerte}' : '—',
                     icon: Icons.warning_amber_rounded,
                     iconColor: AppColors.error,
                   ),
@@ -60,8 +84,6 @@ class DashboardGerantScreen extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 20),
-
-            // Activité récente
             const _SectionTitle(title: 'Activité récente'),
             const SizedBox(height: 8),
             _RecentSaleItem(
@@ -136,9 +158,12 @@ class DashboardGerantScreen extends StatelessWidget {
   }
 }
 
-// ─── Widgets internes ────────────────────────────────────────────────────────
-
 class _SalesCard extends StatelessWidget {
+  final String montant;
+  final int? nombreVentes;
+
+  const _SalesCard({required this.montant, this.nombreVentes});
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -157,30 +182,25 @@ class _SalesCard extends StatelessWidget {
                 "Ventes aujourd'hui",
                 style: TextStyle(fontSize: 13, color: Colors.white70),
               ),
-              Icon(Icons.settings_outlined, color: Colors.white54, size: 18),
+              const Icon(Icons.settings_outlined,
+                  color: Colors.white54, size: 18),
             ],
           ),
           const SizedBox(height: 8),
-          const Text(
-            '125 000 FCFA',
-            style: TextStyle(
+          Text(
+            montant,
+            style: const TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.w800,
               color: Colors.white,
             ),
           ),
           const SizedBox(height: 4),
-          Row(
-            children: [
-              const Icon(Icons.trending_up,
-                  color: Colors.greenAccent, size: 16),
-              const SizedBox(width: 4),
-              const Text(
-                '+15% par rapport à hier',
-                style: TextStyle(fontSize: 12, color: Colors.white70),
-              ),
-            ],
-          ),
+          if (nombreVentes != null)
+            Text(
+              '$nombreVentes vente${nombreVentes! > 1 ? 's' : ''} aujourd\'hui',
+              style: const TextStyle(fontSize: 12, color: Colors.white70),
+            ),
         ],
       ),
     );

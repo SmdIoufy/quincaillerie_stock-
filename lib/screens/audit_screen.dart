@@ -3,8 +3,6 @@ import 'package:provider/provider.dart';
 import '../models/audit_activite_model.dart';
 import '../models/mouvement_stock_model.dart';
 import '../providers/audit_provider.dart';
-import '../providers/user_management_provider.dart';
-import '../models/user_model.dart';
 
 class AuditScreen extends StatefulWidget {
   const AuditScreen({super.key});
@@ -13,7 +11,8 @@ class AuditScreen extends StatefulWidget {
   State<AuditScreen> createState() => _AuditScreenState();
 }
 
-class _AuditScreenState extends State<AuditScreen> with SingleTickerProviderStateMixin {
+class _AuditScreenState extends State<AuditScreen>
+    with SingleTickerProviderStateMixin {
   late final TabController _tabController;
 
   @override
@@ -22,8 +21,6 @@ class _AuditScreenState extends State<AuditScreen> with SingleTickerProviderStat
     _tabController = TabController(length: 2, vsync: this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<AuditProvider>().fetchAll();
-      final userProvider = context.read<UserManagementProvider>();
-      if (userProvider.users.isEmpty) userProvider.fetchUsers();
     });
   }
 
@@ -68,7 +65,8 @@ class _AuditScreenState extends State<AuditScreen> with SingleTickerProviderStat
             builder: (context, provider, _) {
               final hasFilter = provider.dateDebut != null;
               return IconButton(
-                icon: Icon(hasFilter ? Icons.filter_alt : Icons.filter_alt_outlined),
+                icon: Icon(
+                    hasFilter ? Icons.filter_alt : Icons.filter_alt_outlined),
                 tooltip: 'Filtrer par date',
                 onPressed: _pickDateRange,
               );
@@ -119,7 +117,8 @@ class _ActivitesTab extends StatelessWidget {
           child: ListView.separated(
             itemCount: provider.activites.length,
             separatorBuilder: (_, __) => const Divider(height: 1),
-            itemBuilder: (context, index) => _ActiviteTile(item: provider.activites[index]),
+            itemBuilder: (context, index) =>
+                _ActiviteTile(item: provider.activites[index]),
           ),
         );
       },
@@ -136,23 +135,9 @@ class _ActiviteTile extends StatelessWidget {
     return ListTile(
       leading: CircleAvatar(child: Text(item.typeEntite[0])),
       title: Text(item.reference ?? item.typeEntite),
-      subtitle: Builder(
-        builder: (context) {
-          final List<UserModel> users = context.watch<UserManagementProvider>().users;
-          String? auteur;
-          for (final u in users) {
-            if (u.firebaseUid == item.creePar) {
-              auteur = u.displayName ?? u.email;
-              break;
-            }
-          }
-
-          return Text(
-            '${item.typeEntite} · ${item.statut ?? ''}'
-            '${item.clientOuFournisseur != null ? ' · ${item.clientOuFournisseur}' : ''}'
-            '${auteur != null ? ' · Par $auteur' : ''}',
-          );
-        },
+      subtitle: Text(
+        '${item.typeEntite} · ${item.statut ?? ''}'
+        '${item.clientOuFournisseur != null ? ' · ${item.clientOuFournisseur}' : ''}',
       ),
       trailing: Text(
         '${item.dateCreation.day}/${item.dateCreation.month}/${item.dateCreation.year}',
@@ -183,7 +168,8 @@ class _MouvementsTab extends StatelessWidget {
           child: ListView.separated(
             itemCount: provider.mouvements.length,
             separatorBuilder: (_, __) => const Divider(height: 1),
-            itemBuilder: (context, index) => _MouvementTile(item: provider.mouvements[index]),
+            itemBuilder: (context, index) =>
+                _MouvementTile(item: provider.mouvements[index]),
           ),
         );
       },

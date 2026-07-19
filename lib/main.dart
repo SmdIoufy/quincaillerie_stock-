@@ -8,6 +8,7 @@ import 'providers/user_management_provider.dart';
 import 'providers/audit_provider.dart';
 import 'core/constants/app-colors.dart';
 import 'core/router/app_router.dart';
+import 'providers/dashboard_provider.dart';
 // Imports à ajouter
 
 import 'features/inventaire/services/inventaire_provider.dart';
@@ -26,6 +27,7 @@ void main() async {
         ),
         ChangeNotifierProvider(create: (_) => UserManagementProvider()),
         ChangeNotifierProvider(create: (_) => AuditProvider()),
+        ChangeNotifierProvider(create: (_) => DashboardProvider()),
       ],
       child: const MyApp(),
     ),
